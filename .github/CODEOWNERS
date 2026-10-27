@@ -1,0 +1,6 @@
+# Replace @v0idc0de with the instructor's GitHub username before pushing the
+# repository. Files under flags/ intentionally have no code owner.
+/.github/ @v0idc0de
+/app.py @v0idc0de
+/coffee.py @v0idc0de
+/README.md @v0idc0de
