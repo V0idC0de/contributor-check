@@ -1,0 +1,52 @@
+name: Check committer emails
+
+# The check is intentionally limited to pull request activity. A pull request
+# must pass this workflow before its changes can be merged into main.
+on:
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+
+permissions:
+  contents: read
+
+jobs:
+  check-committer-emails:
+    name: Check all contributed committer emails
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Fetch the complete history so commits earlier in the pull request are
+      # available for inspection, not only the most recent commit.
+      - name: Check out the pull request
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      # Build a JSON list containing only the committer email addresses. The
+      # checkout has the full history, so main..HEAD includes all added commits.
+      - name: Retrieve committer email addresses
+        shell: bash
+        run: |
+          git fetch origin main --quiet
+          git log origin/main..HEAD --format='%ce' | \
+            jq -R -s 'split("\n") | map(select(length > 0))' > committer-emails.json
+            # CONT DOES IT?
+      # Print one GitHub error annotation for every email that does not use the
+      # required Coffee Corp domain.
+      - name: Check committer email addresses
+        shell: bash
+        run: |
+          invalid_emails=$(jq -r \
+            '.[] | select(endswith("@coffeecorp.com") | not)' \
+            committer-emails.json)
+
+          if [[ -n "$invalid_emails" ]]; then
+            while read -r email; do
+              echo "::error title=Invalid committer email::$email must end with @coffeecorp.com."
+            done <<< "$invalid_emails"
+            exit 1
+          fi
